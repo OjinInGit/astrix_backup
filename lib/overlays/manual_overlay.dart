@@ -22,37 +22,44 @@ class ManualOverlay extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── Setup ─────────────────────────────────────
           _Section(
             title: AppStrings.get('setup', lang),
             icon: Icons.build_rounded,
             color: Colors.blue,
-            steps: const [
-              'Assemble the solar panel roof upon the feed container, making sure the roof faces East/West. Place slightly away from where you will install the mechanism.',
-              'Attach the tube below the container, then connect it to the mechanism\'s intake.',
-              'Install the sensor attachment on the mechanism, then place it on the pond edge while the sensor attachment is submerged in water on or slightly below the white line.',
-              'Flip the switch to turn the device on.',
-              'Install the Astrix DVC App on your mobile device, and connect using the device-specific QR code on the provided pamphlet. Your device shall be ready to go.',
+            steps: [
+              AppStrings.get('setup_step_1', lang),
+              AppStrings.get('setup_step_2', lang),
+              AppStrings.get('setup_step_3', lang),
+              AppStrings.get('setup_step_4', lang),
+              AppStrings.get('setup_step_5', lang),
             ],
           ),
           const SizedBox(height: 14),
+
+          // ── Troubleshooting ───────────────────────────
           _Section(
             title: AppStrings.get('troubleshooting', lang),
             icon: Icons.warning_amber_rounded,
             color: Colors.orange,
-            custom: const _TroubleshootBody(),
+            custom: _TroubleshootBody(lang: lang),
           ),
           const SizedBox(height: 14),
+
+          // ── Maintenance ───────────────────────────────
           _Section(
             title: AppStrings.get('maintenance', lang),
             icon: Icons.handyman_rounded,
             color: Colors.green,
-            steps: const [
-              'Clean the feed reservoir at least once a month to ensure smooth flow of feed and to keep stored feed fresh.',
-              'Clean sensors at least twice every three months to ensure accurate readings.',
-              'App/Device updates are issued monthly. Keep in touch for further optimizations.',
+            steps: [
+              AppStrings.get('maint_step_1', lang),
+              AppStrings.get('maint_step_2', lang),
+              AppStrings.get('maint_step_3', lang),
             ],
           ),
           const SizedBox(height: 20),
+
+          // ── Developer card ────────────────────────────
           _DevCard(lang: lang),
           const SizedBox(height: 32),
         ],
@@ -60,6 +67,8 @@ class ManualOverlay extends StatelessWidget {
     );
   }
 }
+
+// ── Reusable section card ──────────────────────────────────
 
 class _Section extends StatelessWidget {
   final String title;
@@ -137,8 +146,11 @@ class _Section extends StatelessWidget {
   }
 }
 
+// ── Troubleshooting body ───────────────────────────────────
+
 class _TroubleshootBody extends StatelessWidget {
-  const _TroubleshootBody();
+  final String lang;
+  const _TroubleshootBody({required this.lang});
 
   @override
   Widget build(BuildContext context) {
@@ -146,19 +158,19 @@ class _TroubleshootBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _Issue(
-          problem: 'Application/device does not connect:',
-          fixes: const [
-            'Relaunch the app.',
-            'Reset the device by pushing the Reset button.',
+          problem: AppStrings.get('trouble_issue_1', lang),
+          fixes: [
+            AppStrings.get('trouble_1_fix_1', lang),
+            AppStrings.get('trouble_1_fix_2', lang),
           ],
         ),
         const SizedBox(height: 10),
         _Issue(
-          problem: 'Sensor reads incorrectly or inaccurately:',
-          fixes: const [
-            'Adjust the sensor\'s position.',
-            'Ensure it is unobstructed — no debris covers the sensor while underwater.',
-            'Turn off the device, detach and reattach the sensor, then turn it back on.',
+          problem: AppStrings.get('trouble_issue_2', lang),
+          fixes: [
+            AppStrings.get('trouble_2_fix_1', lang),
+            AppStrings.get('trouble_2_fix_2', lang),
+            AppStrings.get('trouble_2_fix_3', lang),
           ],
         ),
       ],
@@ -198,6 +210,8 @@ class _Issue extends StatelessWidget {
   }
 }
 
+// ── Developer contact card ─────────────────────────────────
+
 class _DevCard extends StatelessWidget {
   final String lang;
   const _DevCard({required this.lang});
@@ -216,18 +230,20 @@ class _DevCard extends StatelessWidget {
               children: [
                 Icon(Icons.groups_rounded, color: cs.primary),
                 const SizedBox(width: 8),
-                Text(
-                  AppStrings.get('reach_devs', lang),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    AppStrings.get('reach_devs', lang),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _Row(Icons.phone_rounded, '09123456789'),
-            _Row(Icons.email_rounded, 'astrix@mgmt.org'),
-            _Row(Icons.business_rounded, 'Astrix Systems'),
+            _Row(Icons.phone_rounded, AppStrings.get('dev_phone', lang)),
+            _Row(Icons.email_rounded, AppStrings.get('dev_email', lang)),
+            _Row(Icons.business_rounded, AppStrings.get('dev_org', lang)),
           ],
         ),
       ),

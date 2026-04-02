@@ -26,7 +26,7 @@ class MainDashboard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ────────────────────────────────────
+            // ── Header ──────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -55,7 +55,7 @@ class MainDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            // ── Parameters grid ───────────────────────────
+            // ── Parameters grid ──────────────────────────
             Text(
               AppStrings.get('water_params', lang),
               style: Theme.of(
@@ -69,7 +69,7 @@ class MainDashboard extends StatelessWidget {
                   child: _ParamCard(
                     label: AppStrings.get('dissolved_oxygen', lang),
                     value: data != null
-                        ? '${data.dissolvedOxygen.toStringAsFixed(2)} mg/L'
+                        ? '${data.dissolvedOxygen.toStringAsFixed(2)} ${AppStrings.get('unit_do', lang)}'
                         : '--',
                     icon: Icons.bubble_chart_rounded,
                     color: Colors.blue,
@@ -93,7 +93,7 @@ class MainDashboard extends StatelessWidget {
                   child: _ParamCard(
                     label: AppStrings.get('temperature', lang),
                     value: data != null
-                        ? '${data.temperature.toStringAsFixed(1)} °C'
+                        ? '${data.temperature.toStringAsFixed(1)} ${AppStrings.get('unit_temp', lang)}'
                         : '--',
                     icon: Icons.thermostat_rounded,
                     color: Colors.orange,
@@ -104,7 +104,7 @@ class MainDashboard extends StatelessWidget {
                   child: _ParamCard(
                     label: AppStrings.get('turbidity', lang),
                     value: data != null
-                        ? '${data.turbidity.toStringAsFixed(1)} NTU'
+                        ? '${data.turbidity.toStringAsFixed(1)} ${AppStrings.get('unit_turbidity', lang)}'
                         : '--',
                     icon: Icons.opacity_rounded,
                     color: Colors.teal,
@@ -115,10 +115,7 @@ class MainDashboard extends StatelessWidget {
             const SizedBox(height: 8),
 
             // ── Category bar ──────────────────────────────
-            _CategoryBar(
-              category: data?.category ?? '--',
-              label: AppStrings.get('water_quality', lang),
-            ),
+            _CategoryBar(rawCategory: data?.category ?? '', lang: lang),
             const SizedBox(height: 14),
 
             // ── Update logs ───────────────────────────────
@@ -149,7 +146,7 @@ class MainDashboard extends StatelessWidget {
   }
 }
 
-// ── Widget helpers ────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 
 class _ConnStatus extends StatelessWidget {
   final bool connected;
@@ -228,12 +225,28 @@ class _ParamCard extends StatelessWidget {
 }
 
 class _CategoryBar extends StatelessWidget {
-  final String category;
-  final String label;
-  const _CategoryBar({required this.category, required this.label});
+  /// Raw category string coming from the device (always English).
+  final String rawCategory;
+  final String lang;
 
-  Color _color(String c) {
-    switch (c.toLowerCase()) {
+  const _CategoryBar({required this.rawCategory, required this.lang});
+
+  // Maps the device's English category to the correct localized string key.
+  String _localizedCategory() {
+    switch (rawCategory.toLowerCase()) {
+      case 'good':
+        return AppStrings.get('cat_good', lang);
+      case 'average':
+        return AppStrings.get('cat_average', lang);
+      case 'bad':
+        return AppStrings.get('cat_bad', lang);
+      default:
+        return AppStrings.get('cat_unknown', lang);
+    }
+  }
+
+  Color _color() {
+    switch (rawCategory.toLowerCase()) {
       case 'good':
         return Colors.green;
       case 'average':
@@ -247,7 +260,11 @@ class _CategoryBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _color(category);
+    final color = _color();
+    final display = rawCategory.isEmpty
+        ? AppStrings.get('cat_unknown', lang)
+        : _localizedCategory();
+
     return Card(
       elevation: 0,
       color: color.withOpacity(0.08),
@@ -262,11 +279,11 @@ class _CategoryBar extends StatelessWidget {
             Icon(Icons.analytics_rounded, color: color, size: 20),
             const SizedBox(width: 10),
             Text(
-              '$label: ',
+              '${AppStrings.get('water_quality', lang)}: ',
               style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             ),
             Text(
-              category,
+              display,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: color,
@@ -318,9 +335,7 @@ class _LogItem extends StatelessWidget {
     return Dismissible(
       key: Key(log.id),
       onDismissed: (_) => provider.removeLog(log.id),
-      // Swipe left
       background: _DismissBg(align: Alignment.centerLeft),
-      // Swipe right
       secondaryBackground: _DismissBg(align: Alignment.centerRight),
       child: Card(
         margin: const EdgeInsets.only(bottom: 5),
