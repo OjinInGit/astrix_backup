@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/feeding_schedule.dart';
 import '../providers/app_provider.dart';
@@ -13,7 +14,7 @@ class ControlsOverlay extends StatefulWidget {
 
 class _ControlsOverlayState extends State<ControlsOverlay> {
   late List<FeedingSchedule> _local;
-  late double _feedAmt;
+  late TextEditingController _feedController;
 
   @override
   void initState() {
@@ -24,7 +25,23 @@ class _ControlsOverlayState extends State<ControlsOverlay> {
           (s) => FeedingSchedule(hour: s.hour, minute: s.minute, isPM: s.isPM),
         )
         .toList();
-    _feedAmt = p.feedAmount;
+    // Initialise the text field with the saved feed amount.
+    _feedController = TextEditingController(
+      text: p.feedAmount.toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void dispose() {
+    _feedController.dispose();
+    super.dispose();
+  }
+
+  // Parses the text field and returns a valid positive double, or null.
+  double? get _parsedFeedAmount {
+    final v = double.tryParse(_feedController.text.trim());
+    if (v == null || v <= 0) return null;
+    return v;
   }
 
   @override
@@ -46,7 +63,7 @@ class _ControlsOverlayState extends State<ControlsOverlay> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── Feed amount ──────────────────────────────
+          // ── Feed amount input ────────────────────────
           Text(
             AppStrings.get('feed_amount', lang),
             style: Theme.of(
@@ -57,40 +74,28 @@ class _ControlsOverlayState extends State<ControlsOverlay> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(AppStrings.get('amount_label', lang)),
-                      Text(
-                        '${_feedAmt.toStringAsFixed(2)} kg',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _feedAmt,
-                    min: 0.1,
-                    max: 5.0,
-                    divisions: 49,
-                    label: '${_feedAmt.toStringAsFixed(2)} kg',
-                    onChanged: (v) => setState(() => _feedAmt = v),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        AppStrings.get('feed_min', lang),
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                      Text(
-                        AppStrings.get('feed_max', lang),
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    ],
-                  ),
+              child: TextField(
+                controller: _feedController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                // Only allow digits and a single decimal point.
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
+                decoration: InputDecoration(
+                  suffixText: 'kg',
+                  hintText: '0.00',
+                  helperText: AppStrings.get('feed_helper', lang),
+                  border: const OutlineInputBorder(),
+                  errorText:
+                      _feedController.text.isNotEmpty &&
+                          _parsedFeedAmount == null
+                      ? AppStrings.get('feed_invalid', lang)
+                      : null,
+                ),
+                onChanged: (_) =>
+                    setState(() {}), // refresh errorText on each keystroke
               ),
             ),
           ),
@@ -129,18 +134,22 @@ class _ControlsOverlayState extends State<ControlsOverlay> {
             child: FilledButton.icon(
               icon: const Icon(Icons.save_rounded),
               label: Text(AppStrings.get('save_changes', lang)),
-              onPressed: () async {
-                for (int i = 0; i < 6; i++) {
-                  provider.updateSchedule(i, _local[i]);
-                }
-                provider.setFeedAmount(_feedAmt);
-                await provider.saveSchedules();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppStrings.get('saved', lang))),
-                  );
-                }
-              },
+              onPressed: _parsedFeedAmount == null
+                  ? null // disabled while input is invalid
+                  : () async {
+                      for (int i = 0; i < 6; i++) {
+                        provider.updateSchedule(i, _local[i]);
+                      }
+                      provider.setFeedAmount(_parsedFeedAmount!);
+                      await provider.saveSchedules();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(AppStrings.get('saved', lang)),
+                          ),
+                        );
+                      }
+                    },
             ),
           ),
           const SizedBox(height: 32),
@@ -151,7 +160,7 @@ class _ControlsOverlayState extends State<ControlsOverlay> {
 }
 
 // ════════════════════════════════════════════════════════════
-// Schedule Card — drum-roll time picker
+// Schedule card — drum-roll time picker
 // ════════════════════════════════════════════════════════════
 
 class _ScheduleCard extends StatefulWidget {
@@ -172,7 +181,6 @@ class _ScheduleCard extends StatefulWidget {
 }
 
 class _ScheduleCardState extends State<_ScheduleCard> {
-  // Hours 1–12, minutes 00/05/.../55, period 0=AM 1=PM
   static const List<int> _hours = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   static const List<int> _minutes = [
     0,
@@ -198,12 +206,9 @@ class _ScheduleCardState extends State<_ScheduleCard> {
   late int _minute;
   late bool _isPM;
 
-  // Item height for every drum-roll wheel
   static const double _itemH = 44.0;
-  // How many items are visible above and below the selected item
-  static const int _visibleExtra = 2;
-  // Total wheel height = selected item + items above + items below
-  static const double _wheelH = _itemH * (1 + _visibleExtra * 2);
+  static const int _extraItems = 2;
+  static const double _wheelH = _itemH * (1 + _extraItems * 2);
 
   @override
   void initState() {
@@ -214,9 +219,9 @@ class _ScheduleCardState extends State<_ScheduleCard> {
 
     _hourCtrl = FixedExtentScrollController(initialItem: _hours.indexOf(_hour));
     _minCtrl = FixedExtentScrollController(
-      initialItem: _minutes.indexOf(
-        _minutes.firstWhere((m) => m == _minute, orElse: () => _minutes[0]),
-      ),
+      initialItem: _minutes
+          .indexWhere((m) => m == _minute)
+          .clamp(0, _minutes.length - 1),
     );
     _periodCtrl = FixedExtentScrollController(initialItem: _isPM ? 1 : 0);
   }
@@ -233,74 +238,90 @@ class _ScheduleCardState extends State<_ScheduleCard> {
     FeedingSchedule(hour: _hour, minute: _minute, isPM: _isPM),
   );
 
-  // ── Single drum-roll column ─────────────────────────────
+  // ── Single drum column — label lives INSIDE this widget ──
+  // This is the key fix: the label and its drum are one Column,
+  // so they can never become misaligned regardless of what sits
+  // beside them in the parent Row.
   Widget _drum<T>({
+    required String columnLabel,
     required FixedExtentScrollController controller,
     required List<T> items,
-    required String Function(T) label,
+    required String Function(T) display,
     required void Function(int) onSelected,
   }) {
     final cs = Theme.of(context).colorScheme;
 
-    return SizedBox(
-      width: 72,
-      height: _wheelH,
-      child: Stack(
-        children: [
-          // The scroll wheel
-          ListWheelScrollView.useDelegate(
-            controller: controller,
-            itemExtent: _itemH,
-            diameterRatio: 1.4,
-            perspective: 0.003,
-            physics: const FixedExtentScrollPhysics(),
-            onSelectedItemChanged: onSelected,
-            childDelegate: ListWheelChildBuilderDelegate(
-              childCount: items.length,
-              builder: (context, i) {
-                final selected =
-                    controller.hasClients && controller.selectedItem == i;
-                return Center(
-                  child: Text(
-                    label(items[i]),
-                    style: TextStyle(
-                      fontSize: selected ? 22 : 17,
-                      fontWeight: selected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: selected
-                          ? cs.primary
-                          : cs.onSurface.withOpacity(0.35),
-                    ),
-                  ),
-                );
-              },
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Label sits directly above its wheel — always aligned.
+        Text(
+          columnLabel,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: cs.onSurface.withOpacity(0.55),
+            letterSpacing: 0.5,
           ),
-
-          // Highlight band over the centre item
-          Positioned(
-            top: _itemH * _visibleExtra,
-            left: 0,
-            right: 0,
-            height: _itemH,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.symmetric(
-                    horizontal: BorderSide(
-                      color: cs.primary.withOpacity(0.45),
-                      width: 1.5,
-                    ),
-                  ),
-                  color: cs.primary.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(6),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: 72,
+          height: _wheelH,
+          child: Stack(
+            children: [
+              ListWheelScrollView.useDelegate(
+                controller: controller,
+                itemExtent: _itemH,
+                diameterRatio: 1.4,
+                perspective: 0.003,
+                physics: const FixedExtentScrollPhysics(),
+                onSelectedItemChanged: onSelected,
+                childDelegate: ListWheelChildBuilderDelegate(
+                  childCount: items.length,
+                  builder: (context, i) {
+                    final sel =
+                        controller.hasClients && controller.selectedItem == i;
+                    return Center(
+                      child: Text(
+                        display(items[i]),
+                        style: TextStyle(
+                          fontSize: sel ? 22 : 17,
+                          fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                          color: sel
+                              ? cs.primary
+                              : cs.onSurface.withOpacity(0.35),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-            ),
+              // Selection highlight band
+              Positioned(
+                top: _itemH * _extraItems,
+                left: 0,
+                right: 0,
+                height: _itemH,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.symmetric(
+                        horizontal: BorderSide(
+                          color: cs.primary.withOpacity(0.45),
+                          width: 1.5,
+                        ),
+                      ),
+                      color: cs.primary.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -310,6 +331,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
     final h = _hour.toString().padLeft(2, '0');
     final m = _minute.toString().padLeft(2, '0');
     final per = _isPM ? 'PM' : 'AM';
+    final cs = Theme.of(context).colorScheme;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -318,7 +340,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Label row
+            // Header row: schedule label + live read-out
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -330,13 +352,12 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                     fontSize: 13,
                   ),
                 ),
-                // Live read-out, mirrors the drum selection
                 Text(
                   '$h:$m $per',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: cs.primary,
                   ),
                 ),
               ],
@@ -344,62 +365,57 @@ class _ScheduleCardState extends State<_ScheduleCard> {
 
             const SizedBox(height: 12),
 
-            // Column headers
+            // Three drums in one Row. The ':' separator is vertically
+            // centred relative to the wheels, not the labels, using
+            // crossAxisAlignment.end so it sits at the wheel level.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _ColLabel(AppStrings.get('slider_hour', lang)),
-                _ColLabel(AppStrings.get('slider_min', lang)),
-                _ColLabel(AppStrings.get('slider_period', lang)),
-              ],
-            ),
-
-            const SizedBox(height: 4),
-
-            // Three drum-roll wheels
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Hour wheel
+                // Hour
                 _drum<int>(
+                  columnLabel: AppStrings.get('slider_hour', lang),
                   controller: _hourCtrl,
                   items: _hours,
-                  label: (h) => h.toString().padLeft(2, '0'),
+                  display: (h) => h.toString().padLeft(2, '0'),
                   onSelected: (i) => setState(() {
                     _hour = _hours[i];
                     _emit();
                   }),
                 ),
 
-                // Separator
-                Text(
-                  ':',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.4),
+                // Colon separator — padded from the bottom to sit
+                // at mid-wheel height, clear of the labels above.
+                Padding(
+                  padding: const EdgeInsets.only(bottom: _wheelH / 2 - 12),
+                  child: Text(
+                    ':',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface.withOpacity(0.4),
+                    ),
                   ),
                 ),
 
-                // Minute wheel
+                // Minute
                 _drum<int>(
+                  columnLabel: AppStrings.get('slider_min', lang),
                   controller: _minCtrl,
                   items: _minutes,
-                  label: (m) => m.toString().padLeft(2, '0'),
+                  display: (m) => m.toString().padLeft(2, '0'),
                   onSelected: (i) => setState(() {
                     _minute = _minutes[i];
                     _emit();
                   }),
                 ),
 
-                // Period wheel
+                // Period
                 _drum<String>(
+                  columnLabel: AppStrings.get('slider_period', lang),
                   controller: _periodCtrl,
                   items: _periods,
-                  label: (p) => p,
+                  display: (p) => p,
                   onSelected: (i) => setState(() {
                     _isPM = i == 1;
                     _emit();
@@ -412,25 +428,4 @@ class _ScheduleCardState extends State<_ScheduleCard> {
       ),
     );
   }
-}
-
-// Thin column header label
-class _ColLabel extends StatelessWidget {
-  final String text;
-  const _ColLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 72,
-    child: Text(
-      text,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-        letterSpacing: 0.5,
-      ),
-    ),
-  );
 }

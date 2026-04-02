@@ -134,6 +134,8 @@ class AppStrings {
       'language': 'Language',
 
       // ── ADD MORE KEYS HERE as the app grows ───────────────
+      'feed_helper': 'Enter any amount greater than 0 kg.',
+      'feed_invalid': 'Please enter a valid amount greater than 0.',
     },
     'war': {
       // ── General UI ──────────────────────────────────────
@@ -246,6 +248,8 @@ class AppStrings {
       'language': 'Lengwahe',
 
       // ── ADD MORE KEYS HERE as the app grows ───────────────
+      'feed_helper': 'Pagbutang hin bis ano na amount na mas dako ha 0 kg.',
+      'feed_invalid': 'Pagbutang hin sakto na amount na mas dako ha 0.',
     },
   };
 
