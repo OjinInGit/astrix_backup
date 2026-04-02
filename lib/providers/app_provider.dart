@@ -10,6 +10,7 @@ import '../services/notification_service.dart';
 class AppProvider extends ChangeNotifier {
   // ── Settings ──────────────────────────────────────────────
   bool _isDarkMode = false;
+  bool _followSystemTheme = true;
   bool _notificationsEnabled = true;
   String _language = 'en';
 
@@ -31,6 +32,7 @@ class AppProvider extends ChangeNotifier {
 
   // ── Getters ───────────────────────────────────────────────
   bool get isDarkMode => _isDarkMode;
+  bool get followSystemTheme => _followSystemTheme;
   bool get notificationsEnabled => _notificationsEnabled;
   String get language => _language;
   bool get deviceConnected => _deviceConnected;
@@ -63,6 +65,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _isDarkMode = prefs.getBool('dark_mode') ?? false;
+    _followSystemTheme = prefs.getBool('follow_system_theme') ?? true;
     _notificationsEnabled = prefs.getBool('notifications') ?? true;
     _language = prefs.getString('language') ?? 'en';
     _feedAmount = prefs.getDouble('feed_amount') ?? 0.5;
@@ -81,6 +84,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _persistSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('follow_system_theme', _followSystemTheme);
     await prefs.setBool('dark_mode', _isDarkMode);
     await prefs.setBool('notifications', _notificationsEnabled);
     await prefs.setString('language', _language);
@@ -113,6 +117,12 @@ class AppProvider extends ChangeNotifier {
   // ── Setters ───────────────────────────────────────────────
   void toggleDarkMode(bool v) {
     _isDarkMode = v;
+    _persistSettings();
+    notifyListeners();
+  }
+
+  void toggleFollowSystemTheme(bool v) {
+    _followSystemTheme = v;
     _persistSettings();
     notifyListeners();
   }

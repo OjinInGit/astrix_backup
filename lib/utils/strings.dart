@@ -129,7 +129,10 @@ class AppStrings {
       'dev_org': 'Astrix Systems',
 
       // ── Settings overlay ──────────────────────────────────
+      'follow_system_theme': 'Follow System Theme',
+      'follow_system_theme_desc': 'Sync with your device\'s dark mode setting',
       'dark_mode': 'Dark Mode',
+      'dark_mode_system_override': 'Disabled when following system theme',
       'notifications': 'Notifications',
       'language': 'Language',
 
@@ -243,7 +246,10 @@ class AppStrings {
       'dev_org': 'Astrix Systems',
 
       // ── Settings overlay ──────────────────────────────────
+      'follow_system_theme': 'Sumunod sa Tema han Device',
+      'follow_system_theme_desc': 'Mag-sync sa dark mode setting han device',
       'dark_mode': 'Pagpasirom',
+      'dark_mode_system_override': 'Hindi gumagana kung sumunod sa tema',
       'notifications': 'Mga Pasabot',
       'language': 'Lengwahe',
 

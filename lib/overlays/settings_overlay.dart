@@ -37,20 +37,50 @@ class SettingsOverlay extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          // ── Follow System Theme ───────────────────────────────
+          // Allows the app to automatically sync with device settings
+          Builder(
+            builder: (context) {
+              final followSystem = context.select<AppProvider, bool>(
+                (p) => p.followSystemTheme,
+              );
+              return SwitchListTile(
+                secondary: const Icon(Icons.brightness_4_rounded),
+                title: Text(AppStrings.get('follow_system_theme', lang)),
+                subtitle: Text(
+                  AppStrings.get('follow_system_theme_desc', lang),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                value: followSystem,
+                onChanged: context.read<AppProvider>().toggleFollowSystemTheme,
+              );
+            },
+          ),
+          const Divider(height: 1),
+
           // ── Dark Mode ─────────────────────────────────────────
-          // context.select is scoped tightly here: only this tile
-          // rebuilds when isDarkMode changes, preventing the full
-          // overlay from rebuilding and causing animation lag.
+          // Manual dark mode toggle (only active when not following system)
           Builder(
             builder: (context) {
               final isDark = context.select<AppProvider, bool>(
                 (p) => p.isDarkMode,
               );
+              final followSystem = context.select<AppProvider, bool>(
+                (p) => p.followSystemTheme,
+              );
               return SwitchListTile(
                 secondary: const Icon(Icons.dark_mode_rounded),
                 title: Text(AppStrings.get('dark_mode', lang)),
+                subtitle: followSystem
+                    ? Text(
+                        AppStrings.get('dark_mode_system_override', lang),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )
+                    : null,
                 value: isDark,
-                onChanged: context.read<AppProvider>().toggleDarkMode,
+                onChanged: followSystem
+                    ? null
+                    : context.read<AppProvider>().toggleDarkMode,
               );
             },
           ),
